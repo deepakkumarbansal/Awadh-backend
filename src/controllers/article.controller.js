@@ -17,6 +17,13 @@ const createArticle = async (req, res) => {
     if (!reporterId || !title || !content || !category) {
       return res.status(400).json({ message: "Missing required fields" });
     }
+    const user = await User.findById(reporterId);
+    if (user.role == "user") {
+      return res.status(401).json({
+        message:
+          "Unauthorized access, User is not allowed to post the news article",
+      });
+    }
 
     console.log("reporterId", reporterId);
     const article = await Article.create({
@@ -40,7 +47,7 @@ const createArticle = async (req, res) => {
 };
 
 // Get All Articles with Pagination
-
+// will be showed on home page
 const getAllArticles = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
