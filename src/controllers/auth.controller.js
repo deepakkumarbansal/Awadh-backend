@@ -1,6 +1,9 @@
 import User from "../models/user.model.js";
 import { isValidEmail, checkPassStrength } from "../config/utility/validate.js";
-import { encryptPassword, comparePassword } from "../config/libraries/bcrypt.js";
+import {
+  encryptPassword,
+  comparePassword,
+} from "../config/libraries/bcrypt.js";
 import { signJwt, jwtVerify } from "../config/libraries/jwt.js";
 
 const register = async (req, res) => {
@@ -60,7 +63,10 @@ const login = async (req, res) => {
       return res.status(404).json({ message: "User does not exist" });
     }
 
+    // console.log("user", user);
     const isPasswordCorrect = await comparePassword(password, user.password);
+
+    console.log("token");
 
     if (isPasswordCorrect) {
       const token = signJwt(
@@ -68,6 +74,8 @@ const login = async (req, res) => {
         "7d",
         "access"
       );
+
+      console.log("token", token);
 
       return res.status(200).json({
         message: "Login Successful",
