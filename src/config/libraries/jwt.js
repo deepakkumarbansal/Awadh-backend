@@ -1,16 +1,19 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
+import environmentConfig from "../env/environmentConfig.js";
 
 function signJwt(payload, exp, tType) {
   let token = "";
 
   if (tType === "access") {
-    token = jwt.sign(payload, process.env.jwtAccessKey, { expiresIn: exp });
+    token = jwt.sign(payload, environmentConfig.JWT_ACCESS_KEY, {
+      expiresIn: exp,
+    });
   }
 
   if (tType === "refresh") {
-    token = jwt.sign(payload, process.env.jwtPublicKey, { expiresIn: exp });
+    token = jwt.sign(payload, environmentConfig.JWT_REFRESH_KEY, {
+      expiresIn: exp,
+    });
   }
 
   return token;
@@ -21,11 +24,11 @@ function jwtVerify(token, tType) {
 
   try {
     if (tType === "access") {
-      decodedStatus = jwt.verify(token, process.env.jwtAccessKey);
+      decodedStatus = jwt.verify(token, environmentConfig.JWT_ACCESS_KEY);
     }
 
     if (tType === "refresh") {
-      decodedStatus = jwt.verify(token, process.env.jwtPublicKey);
+      decodedStatus = jwt.verify(token, environmentConfig.JWT_REFRESH_KEY);
     }
 
     return decodedStatus;
