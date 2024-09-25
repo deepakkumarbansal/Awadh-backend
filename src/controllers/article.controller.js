@@ -90,7 +90,8 @@ const getAllArticles = async (req, res) => {
 const getArticleById = async (req, res) => {
   try {
     const { articleId } = req.params;
-    const article = await Article.findById(articleId);
+    const article = await Article.findById(articleId)
+    .populate('reporterId', 'name');
 
     if (!article) {
       return res.status(404).json({ message: "Article not found" });
@@ -197,11 +198,54 @@ const updateArticleById = async (req, res) => {
   }
 };
 
+const getArticleByCategory = async (req,res)=>{
+  
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    // Convert page and limit to numbers
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    
+    const {category} = req.query
+
+    if(!category){
+     return res.status(404).json({message:"Category Required!"})
+    }
+
+
+     // Fetch articles that are verified
+     const articles = await Article.find({ verified: true, category })
+     .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
+     .skip((pageNumber - 1) * limitNumber)
+     .limit(limitNumber).populate('reporterId', 'name') 
+     .exec()
+
+
+
+     const totalCount = await Article.countDocuments({ verified: true ,category });
+
+     return res.status(200).json({
+       totalCount,
+       page: pageNumber,
+       limit: limitNumber,
+       articles,
+     });
+
+
+   
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Failed to fetch articles", error: error.message });
+  }
+}
+
 export {
   createArticle,
   getAllArticles,
   getArticleById,
   updateArticleById,
   deleteArticleById,
-  getArticlesByReporterId,
+  getArticlesByReporterId,getArticleByCategory
 };

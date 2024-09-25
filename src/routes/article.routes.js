@@ -6,7 +6,7 @@ import {
   getArticleById,
   updateArticleById,
   deleteArticleById,
-  getArticlesByReporterId,
+  getArticlesByReporterId,getArticleByCategory
 } from "../controllers/article.controller.js";
 
 articleRoutes.post("/create", createArticle);
@@ -15,5 +15,6 @@ articleRoutes.get("/whole-article/:articleId", getArticleById);
 articleRoutes.patch("/update-article/:articleId", updateArticleById);
 articleRoutes.delete("/delete-article/:articleId", deleteArticleById);
 articleRoutes.get("/reporter-articels/:reporterId", getArticlesByReporterId); // Paginated
+articleRoutes.get("/article-category",getArticleByCategory) //paginated
 
 export default articleRoutes;

@@ -1,6 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3ae172a (work on client changes)
 const environmentConfig = {
   PORT: process.env.PORT || 8400,
   MONGO_URI: process.env.MONGO_URI,

@@ -1,10 +1,15 @@
 import jwt from "jsonwebtoken";
+<<<<<<< HEAD
 import environmentConfig from "../env/environmentConfig.js";
+=======
+import environmentConfig from '../env/environmentConfig.js'
+>>>>>>> 3ae172a (work on client changes)
 
 function signJwt(payload, exp, tType) {
   let token = "";
 
   if (tType === "access") {
+<<<<<<< HEAD
     token = jwt.sign(payload, environmentConfig.JWT_ACCESS_KEY, {
       expiresIn: exp,
     });
@@ -14,6 +19,13 @@ function signJwt(payload, exp, tType) {
     token = jwt.sign(payload, environmentConfig.JWT_REFRESH_KEY, {
       expiresIn: exp,
     });
+=======
+    token = jwt.sign(payload, environmentConfig.JWT_ACCESS_KEY, { expiresIn: exp });
+  }
+
+  if (tType === "refresh") {
+    token = jwt.sign(payload, environmentConfig.JWT_REFRESH_KEY, { expiresIn: exp });
+>>>>>>> 3ae172a (work on client changes)
   }
 
   return token;

@@ -8,6 +8,8 @@ import { signJwt, jwtVerify } from "../config/libraries/jwt.js";
 
 const register = async (req, res) => {
   try {
+    console.log(req.body);
+    
     const { name, email, password, mobile, role, status } = req.body;
 
     if (!isValidEmail(email)) {
@@ -23,7 +25,8 @@ const register = async (req, res) => {
 
     // Check if user exists
     const isUserExist = await User.findOne({ email }).lean();
-
+    console.log("isUserExist",isUserExist);
+    
     if (isUserExist) {
       return res
         .status(400)
@@ -31,7 +34,8 @@ const register = async (req, res) => {
     }
 
     const hashedPassword = await encryptPassword(password);
-
+    console.log("hasedPass", hashedPassword);
+    
     // Create user document
     const user = new User({
       name,
@@ -41,9 +45,11 @@ const register = async (req, res) => {
       role,
       status,
     });
-
+    console.log("newuser", user);
+    
     await user.save();
-
+    console.log("Last");
+    
     return res
       .status(201)
       .json({ message: "User Registration Successful", user: { email } });
@@ -57,26 +63,39 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
+    console.log("details of login", email, password);
+    
     const user = await User.findOne({ email });
+    console.log("user", user);
+    
     if (!user) {
       return res.status(404).json({ message: "User does not exist" });
     }
 
     // console.log("user", user);
     const isPasswordCorrect = await comparePassword(password, user.password);
+<<<<<<< HEAD
 
     console.log("token");
 
+=======
+    console.log("correct password", isPasswordCorrect);
+    
+>>>>>>> 3ae172a (work on client changes)
     if (isPasswordCorrect) {
       const token = signJwt(
         { userId: user._id, role: user.role },
         "7d",
         "access"
       );
+<<<<<<< HEAD
 
       console.log("token", token);
 
+=======
+      console.log("token", token);
+      
+>>>>>>> 3ae172a (work on client changes)
       return res.status(200).json({
         message: "Login Successful",
         token,
