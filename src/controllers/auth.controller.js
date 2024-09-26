@@ -74,33 +74,19 @@ const login = async (req, res) => {
 
     // console.log("user", user);
     const isPasswordCorrect = await comparePassword(password, user.password);
-<<<<<<< HEAD
-
-    console.log("token");
-
-=======
-    console.log("correct password", isPasswordCorrect);
-    
->>>>>>> 3ae172a (work on client changes)
     if (isPasswordCorrect) {
       const token = signJwt(
         { userId: user._id, role: user.role },
         "7d",
         "access"
       );
-<<<<<<< HEAD
-
-      console.log("token", token);
-
-=======
-      console.log("token", token);
-      
->>>>>>> 3ae172a (work on client changes)
       return res.status(200).json({
         message: "Login Successful",
         token,
         userId: user._id,
         role: user.role,
+        userName: user.name,
+        email: user.email
       });
     }
     return res.status(401).json({ message: "Email or password is incorrect" });
