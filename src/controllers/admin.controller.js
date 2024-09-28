@@ -80,7 +80,7 @@ const getAllReporters = async (req, res) => {
 // Update status of a user
 const updateStatusOfUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { userId:id } = req.params;
     const { status } = req.body;
 
     // Validate that status is provided
@@ -183,10 +183,46 @@ const updateArticleVerification = async (req, res) => {
   }
 };
 
+//Update article status
+const updateArticleStatus = async (req, res) => {
+  try {
+    const { articleId:id } = req.params;
+    const { status } = req.body;
+    console.log(id, status, "idStatus");
+    
+    // Validate that status is provided
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    // Update article status
+    const updatedArticle = await Article.findByIdAndUpdate(
+      id,
+      { status }, //accepted, rejected, draft
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedArticle) {
+      return res.status(404).json({ message: "Article not found" });
+    }
+
+    return res.status(200).json({
+      message: "Article status updated successfully",
+      updatedArticle,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to update article status",
+      error: error.message,
+    });
+  }
+};
+
 export {
   getAllUsers,
   getAllReporters,
   updateStatusOfUser,
   allArticles,
   updateArticleVerification,
+  updateArticleStatus
 };
