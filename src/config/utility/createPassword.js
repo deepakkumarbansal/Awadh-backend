@@ -1,0 +1,17 @@
+function generatePassword(length = 8) {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+[]{}|;:,.<>?";
+  let password = "";
+
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    password += characters[randomIndex];
+  }
+
+  return password; // Now it returns the password
+}
+
+export { generatePassword };
+
+// const password = generatePassword(); // Generate and store password
+// console.log(password); // Example: 9Z@p4B&f

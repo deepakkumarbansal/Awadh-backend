@@ -10,6 +10,9 @@ const sendEmail = async (to, subject, html) => {
         user: "support@trackify.ai",
         pass: "support@trackify.ai",
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
     const mailOptions = {

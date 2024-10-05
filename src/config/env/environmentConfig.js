@@ -8,6 +8,7 @@ const environmentConfig = {
   JWT_ACCESS_EXPIRY: "15d",
   JWT_REFRESH_KEY: process.env.JWT_REFRESH_KEY,
   JWT_REFRESH_EXPIRY: "30d",
+  FRONTEND_URL: process.env.FRONTEND_URL,
 };
 
 export default environmentConfig;
