@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import { isValidEmail, checkPassStrength } from "../config/utility/validate.js";
+import bcrypt from "bcrypt";
 import {
   encryptPassword,
   comparePassword,
@@ -174,4 +175,31 @@ const verifyEmailLinkAndUpdate = async (req, res) => {
   }
 };
 
-export { register, login, forgetPassword, verifyEmailLinkAndUpdate };
+const changePassword = async (req, res) => {
+  try {
+    const { email, oldPassword, newPassword } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+      
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+  
+    if (!isMatch) {
+      return res.status(404).json({ message: "Please Enter Correct Password!" });
+    }
+
+    const newHashedPassword = await encryptPassword(newPassword);
+    user.password = newHashedPassword;
+    user.save();
+
+    return res.status(200).json({ message: "User Password Updated Successfully" });
+  } catch (error) {
+    return res.status(400).json({message: error.message});
+  }
+}
+
+export { register, login, forgetPassword, verifyEmailLinkAndUpdate, changePassword };

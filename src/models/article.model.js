@@ -53,7 +53,7 @@ const articleSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "published", "rejected"],
+      enum: ["draft", "accepted", "rejected"],
       default: "draft",
     },
     rejectionReason: {
