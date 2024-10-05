@@ -67,7 +67,7 @@ const getAllArticles = async (req, res) => {
     }
 
     // Fetch articles that are verified
-    const articles = await Article.find({ verified: true })
+    const articles = await Article.find({ status: 'accepted' })
       .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber)
@@ -219,7 +219,7 @@ const getArticleByCategory = async (req,res)=>{
 
 
      // Fetch articles that are verified
-     const articles = await Article.find({ verified: true, category })
+     const articles = await Article.find({ status: 'accepted', category })
      .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
      .skip((pageNumber - 1) * limitNumber)
      .limit(limitNumber).populate('reporterId', 'name') 
@@ -227,7 +227,7 @@ const getArticleByCategory = async (req,res)=>{
 
 
 
-     const totalCount = await Article.countDocuments({ verified: true ,category });
+     const totalCount = await Article.countDocuments({ status: 'accepted' ,category });
 
      return res.status(200).json({
        totalCount,
@@ -245,11 +245,47 @@ const getArticleByCategory = async (req,res)=>{
   }
 }
 
+const searchArticles = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const {query} = req.body;
+
+    if (pageNumber < 1 || limitNumber < 1) {
+      return res
+        .status(400)
+        .json({ message: "Page and limit must be positive integers" });
+    }
+
+    const articles = await Article.find({
+      $or: [
+        { title: { $regex: query, $options: "i" } }, // case-insensitive regex search
+        { subheading: { $regex: query, $options: "i" } },
+        { content: { $regex: query, $options: "i" } },
+        { category: { $regex: query, $options: "i" } }
+      ]
+    })
+    .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
+    .skip((pageNumber - 1) * limitNumber)
+    .limit(limitNumber)
+    .exec();
+    
+    if(!articles){
+      return res.status(404).json({message: "No article found!", articles});
+    }
+    return res.status(200).json({message: "Searched Successfully", articles});
+  } catch (error) {
+    return res.status(400).json({message: error.message});
+  }
+}
+
 export {
   createArticle,
   getAllArticles,
   getArticleById,
   updateArticleById,
   deleteArticleById,
-  getArticlesByReporterId,getArticleByCategory
+  getArticlesByReporterId,getArticleByCategory,
+  searchArticles
 };
