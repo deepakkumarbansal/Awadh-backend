@@ -1,5 +1,14 @@
 import User from "../models/user.model.js";
 import Article from "../models/article.model.js";
+import { isValidEmail, checkPassStrength } from "../config/utility/validate.js";
+import { signJwt, jwtVerify } from "../config/libraries/jwt.js";
+import { sendEmail } from "../config/libraries/nodemailer.js";
+import environmentConfig from "../config/env/environmentConfig.js";
+import { generatePassword } from "../config/utility/createPassword.js";
+import {
+  encryptPassword,
+  comparePassword,
+} from "../config/libraries/bcrypt.js";
 
 // Get all users with pagination
 const getAllUsers = async (req, res) => {
@@ -80,7 +89,7 @@ const getAllReporters = async (req, res) => {
 // Update status of a user
 const updateStatusOfUser = async (req, res) => {
   try {
-    const { userId:id } = req.params;
+    const { userId: id } = req.params;
     const { status } = req.body;
 
     // Validate that status is provided
@@ -186,10 +195,10 @@ const updateArticleVerification = async (req, res) => {
 //Update article status
 const updateArticleStatus = async (req, res) => {
   try {
-    const { articleId:id } = req.params;
+    const { articleId: id } = req.params;
     const { status } = req.body;
     console.log(id, status, "idStatus");
-    
+
     // Validate that status is provided
     if (!status) {
       return res.status(400).json({ message: "Status is required" });
@@ -218,11 +227,105 @@ const updateArticleStatus = async (req, res) => {
   }
 };
 
+const inviteReporter = async (req, res) => {
+  try {
+    const { email } = req.body;
+    console.log(email);
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Invalid email format." });
+    }
+
+    // Check if the email is already registered
+    const isUserExist = await User.findOne({ email }).lean();
+    if (isUserExist) {
+      return res.status(400).json({
+        message:
+          "Email is already registered. Please try logging in or use a different email.",
+      });
+    }
+
+    // Generate a JWT token for the invite (expires in 20 minutes)
+    const token = signJwt({ email }, "20m", "access");
+
+    // Construct the invite link
+    const link = `${environmentConfig.FRONTEND_URL}/accept-invite-for-reporter?token=${token}`;
+
+    // Set email subject and content
+    const subject = "Invitation for Reporter Account on AWADH KESARI";
+    const html = `<div>You have been invited to become a reporter. Click <a href="${link}">here</a> to accept the invitation.</div>`;
+
+    // Send the invite email
+    await sendEmail(email, subject, html);
+
+    // Respond to the client indicating success
+    return res.status(200).json({
+      message: `An invitation has been sent to ${email}.`,
+    });
+  } catch (error) {
+    console.error("Error sending reporter invitation:", error);
+    return res.status(500).json({
+      message:
+        "An error occurred while sending the invitation. Please try again later.",
+    });
+  }
+};
+
+const acceptInviteForReporter = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Verify the token and extract email
+    const { email } = jwtVerify(token, "access");
+
+    // Generate random password
+    const randomPassword = generatePassword(8);
+
+    // Encrypt the password in parallel with saving user
+    const encryptedPassword = await encryptPassword(randomPassword);
+
+    // Create new user object
+    const user = new User({
+      name: email.split("@")[0], // Set name to the part of the email before '@'
+      email: email.toLowerCase(), // Ensure the email is lowercase
+      password: encryptedPassword, // Save the encrypted password
+      role: "reporter",
+    });
+
+    // Save user and prepare the email sending in parallel to optimize performance
+    await Promise.all([
+      user.save(),
+      sendEmail(
+        email,
+        "Thank you for confirming your reporter account",
+        `<div>Your temporary password: <strong>${randomPassword}</strong></div><div>Please log in using <a href="${environmentConfig.FRONTEND_URL}/login">this link</a>.</div>`
+      ),
+    ]);
+
+    // Respond with success message
+    return res.status(200).json({
+      message:
+        "Account created successfully. Please check your email for login details.",
+    });
+  } catch (error) {
+    console.error("Error accepting reporter invite:", error);
+
+    // Respond with a generic error message
+    return res.status(500).json({
+      message:
+        "An error occurred while accepting the invite. Please try again later.",
+    });
+  }
+};
+
 export {
   getAllUsers,
   getAllReporters,
   updateStatusOfUser,
   allArticles,
   updateArticleVerification,
-  updateArticleStatus
+  updateArticleStatus,
+  inviteReporter,
+  acceptInviteForReporter,
 };

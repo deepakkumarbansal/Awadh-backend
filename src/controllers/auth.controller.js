@@ -9,8 +9,6 @@ import { signJwt, jwtVerify } from "../config/libraries/jwt.js";
 
 const register = async (req, res) => {
   try {
-    console.log(req.body);
-    
     const { name, email, password, mobile, role, status } = req.body;
 
     if (!isValidEmail(email)) {
@@ -26,8 +24,8 @@ const register = async (req, res) => {
 
     // Check if user exists
     const isUserExist = await User.findOne({ email }).lean();
-    console.log("isUserExist",isUserExist);
-    
+    console.log("isUserExist", isUserExist);
+
     if (isUserExist) {
       return res
         .status(400)
@@ -36,7 +34,7 @@ const register = async (req, res) => {
 
     const hashedPassword = await encryptPassword(password);
     console.log("hasedPass", hashedPassword);
-    
+
     // Create user document
     const user = new User({
       name,
@@ -47,10 +45,10 @@ const register = async (req, res) => {
       status,
     });
     console.log("newuser", user);
-    
+
     await user.save();
     console.log("Last");
-    
+
     return res
       .status(201)
       .json({ message: "User Registration Successful", user: { email } });
@@ -65,10 +63,10 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("details of login", email, password);
-    
+
     const user = await User.findOne({ email });
     console.log("user", user);
-    
+
     if (!user) {
       return res.status(404).json({ message: "User does not exist" });
     }
@@ -87,7 +85,7 @@ const login = async (req, res) => {
         userId: user._id,
         role: user.role,
         userName: user.name,
-        email: user.email
+        email: user.email,
       });
     }
     return res.status(401).json({ message: "Email or password is incorrect" });
@@ -183,23 +181,32 @@ const changePassword = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
-      
     }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
-  
+
     if (!isMatch) {
-      return res.status(404).json({ message: "Please Enter Correct Password!" });
+      return res
+        .status(404)
+        .json({ message: "Please Enter Correct Password!" });
     }
 
     const newHashedPassword = await encryptPassword(newPassword);
     user.password = newHashedPassword;
     user.save();
 
-    return res.status(200).json({ message: "User Password Updated Successfully" });
+    return res
+      .status(200)
+      .json({ message: "User Password Updated Successfully" });
   } catch (error) {
-    return res.status(400).json({message: error.message});
+    return res.status(400).json({ message: error.message });
   }
-}
+};
 
-export { register, login, forgetPassword, verifyEmailLinkAndUpdate, changePassword };
+export {
+  register,
+  login,
+  forgetPassword,
+  verifyEmailLinkAndUpdate,
+  changePassword,
+};
