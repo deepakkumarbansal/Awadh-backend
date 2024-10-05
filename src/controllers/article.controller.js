@@ -11,6 +11,7 @@ const createArticle = async (req, res) => {
       category,
       images,
       videoLink,
+      status
     } = req.body;
 
     // Check for required fields
@@ -26,6 +27,7 @@ const createArticle = async (req, res) => {
     }
 
     console.log("reporterId", reporterId);
+    const postStatus = status ? status : 'draft'
     const article = await Article.create({
       reporterId,
       title,
@@ -34,6 +36,7 @@ const createArticle = async (req, res) => {
       category,
       images,
       videoLink,
+      status: postStatus
     });
 
     return res
@@ -143,6 +146,7 @@ const getArticlesByReporterId = async (req, res) => {
 
     // Fetch articles
     const articles = await Article.find({ reporterId })
+      .sort({ createdAt: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber)
       .exec();
