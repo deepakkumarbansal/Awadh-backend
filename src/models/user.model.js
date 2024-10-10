@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "inactive", "banned", "blocked"],
+      enum: ["active", "inactive"],
       default: "active",
     },
     role: {
@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "user", "reporter"],
       default: "user",
     },
+    avatarUrl: {
+      type: String,
+      default: null,
+      trim: true,
+    }
   },
   {
     timestamps: true,

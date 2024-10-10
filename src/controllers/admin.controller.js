@@ -248,9 +248,9 @@ const inviteReporter = async (req, res) => {
 
     // Generate a JWT token for the invite (expires in 20 minutes)
     const token = signJwt({ email }, "20m", "access");
-
+console.log("check",environmentConfig.FRONTEND_URL)
     // Construct the invite link
-    const link = `${environmentConfig.FRONTEND_URL}/accept-invite-for-reporter?token=${token}`;
+    const link = `${environmentConfig.FRONTEND_URL}/accept-invite-reporter?token=${token}`;
 
     // Set email subject and content
     const subject = "Invitation for Reporter Account on AWADH KESARI";

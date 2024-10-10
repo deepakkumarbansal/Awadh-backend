@@ -86,6 +86,8 @@ const login = async (req, res) => {
         role: user.role,
         userName: user.name,
         email: user.email,
+        status: user.status,
+        avatarUrl: user?.avatarUrl || null,
       });
     }
     return res.status(401).json({ message: "Email or password is incorrect" });
@@ -185,6 +187,7 @@ const changePassword = async (req, res) => {
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
 
+    
     if (!isMatch) {
       return res
         .status(404)
@@ -203,10 +206,63 @@ const changePassword = async (req, res) => {
   }
 };
 
+const changeName = async (req, res) => {
+  try {
+    const { email, name, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    
+    if (!isMatch) {
+      return res
+        .status(404)
+        .json({ message: "Please Enter Correct Password!" });
+    }
+
+    user.name = name;
+    user.save();
+
+    return res
+      .status(200)
+      .json({ message: "User Name Updated Successfully" });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+const updateAvatarUrl = async (req, res) => {
+  try {
+    const { email, avatarUrl } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.avatarUrl = avatarUrl;
+    user.save();
+
+    return res
+      .status(200)
+      .json({ message: "Profile Image Updated Successfully" });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
 export {
   register,
   login,
   forgetPassword,
   verifyEmailLinkAndUpdate,
   changePassword,
+  changeName,
+  updateAvatarUrl
 };
