@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "nodemon index.js"
+    "server": "nodemon index.js", // For development
+    "start": "node index.js" // For production
   },
   "author": "Shivam Chaudhary",
   "license": "ISC",
