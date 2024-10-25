@@ -1,3 +1,6 @@
+import { ApiError } from "../config/utility/ApiError.js";
+import { ApiResponse } from "../config/utility/ApiResponse.js";
+import { asyncHandler } from "../config/utility/asyncHandler.js";
 import Article from "../models/article.model.js";
 import User from "../models/user.model.js";
 
@@ -11,7 +14,7 @@ const createArticle = async (req, res) => {
       category,
       images,
       videoLink,
-      status
+      status,
     } = req.body;
 
     // Check for required fields
@@ -27,7 +30,7 @@ const createArticle = async (req, res) => {
     }
 
     console.log("reporterId", reporterId);
-    const postStatus = status ? status : 'draft'
+    const postStatus = status ? status : "draft";
     const article = await Article.create({
       reporterId,
       title,
@@ -36,7 +39,7 @@ const createArticle = async (req, res) => {
       category,
       images,
       videoLink,
-      status: postStatus
+      status: postStatus,
     });
 
     return res
@@ -67,7 +70,7 @@ const getAllArticles = async (req, res) => {
     }
 
     // Fetch articles that are verified
-    const articles = await Article.find({ status: 'accepted' })
+    const articles = await Article.find({ status: "accepted" })
       .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber)
@@ -93,8 +96,10 @@ const getAllArticles = async (req, res) => {
 const getArticleById = async (req, res) => {
   try {
     const { articleId } = req.params;
-    const article = await Article.findById(articleId)
-    .populate('reporterId', 'name');
+    const article = await Article.findById(articleId).populate(
+      "reporterId",
+      "name"
+    );
 
     if (!article) {
       return res.status(404).json({ message: "Article not found" });
@@ -202,83 +207,150 @@ const updateArticleById = async (req, res) => {
   }
 };
 
-const getArticleByCategory = async (req,res)=>{
-  
+const getArticleByCategory = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
 
     // Convert page and limit to numbers
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
-    
-    const {category} = req.query
 
-    if(!category){
-     return res.status(404).json({message:"Category Required!"})
+    const { category } = req.query;
+
+    if (!category) {
+      return res.status(404).json({ message: "Category Required!" });
     }
 
+    // Fetch articles that are verified
+    const articles = await Article.find({ status: "accepted", category })
+      .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
+      .skip((pageNumber - 1) * limitNumber)
+      .limit(limitNumber)
+      .populate("reporterId", "name")
+      .exec();
 
-     // Fetch articles that are verified
-     const articles = await Article.find({ status: 'accepted', category })
-     .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
-     .skip((pageNumber - 1) * limitNumber)
-     .limit(limitNumber).populate('reporterId', 'name') 
-     .exec()
+    const totalCount = await Article.countDocuments({
+      status: "accepted",
+      category,
+    });
 
-
-
-     const totalCount = await Article.countDocuments({ status: 'accepted' ,category });
-
-     return res.status(200).json({
-       totalCount,
-       page: pageNumber,
-       limit: limitNumber,
-       articles,
-     });
-
-
-   
+    return res.status(200).json({
+      totalCount,
+      page: pageNumber,
+      limit: limitNumber,
+      articles,
+    });
   } catch (error) {
     return res
       .status(500)
       .json({ message: "Failed to fetch articles", error: error.message });
   }
-}
+};
 
-const searchArticles = async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
-    const {query} = req.body;
+const searchArticles = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const { role, path, reporterId, query } = req.body; // role can be user, "", admin, reporter
 
-    if (pageNumber < 1 || limitNumber < 1) {
-      return res
-        .status(400)
-        .json({ message: "Page and limit must be positive integers" });
-    }
+  if (!query) {
+    throw new ApiError(404, "Search query cannot be empty");
+  }
 
-    const articles = await Article.find({
-      $or: [
-        { title: { $regex: query, $options: "i" } }, // case-insensitive regex search
-        { subheading: { $regex: query, $options: "i" } },
-        { content: { $regex: query, $options: "i" } },
-        { category: { $regex: query, $options: "i" } }
-      ]
-    })
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+
+  if (pageNumber < 1 || limitNumber < 1) {
+    return res
+      .status(400)
+      .json({ message: "Page and limit must be positive integers" });
+  }
+
+  const searchQuery = {
+    $or: [
+      { title: { $regex: query, $options: "i" } }, // case-insensitive regex search
+      { subheading: { $regex: query, $options: "i" } },
+      { content: { $regex: query, $options: "i" } },
+      { category: { $regex: query, $options: "i" } },
+      {status: {$regex: query, $options: "i"}}
+    ],
+  };
+
+  if (
+    role?.trim() === "" ||
+    role?.trim() === "user" ||
+    path?.trim() === "/" ||
+    path?.trim() === ""
+  ) {
+    searchQuery.status = "accepted";
+  } else if (role?.trim() === "repoter" && path?.trim() === "/reporter") {
+    searchQuery.status = { $in: ["accepted", "rejected", "draft"] };
+    searchQuery.reporterId = reporterId;
+  } else if (role?.trim() === "admin" && path?.trim() === "/admin") {
+    searchQuery.status = { $in: ["accepted", "rejected", "draft"] };
+  }
+
+  const articles = await Article.find(searchQuery)
     .sort({ createdAt: -1 }) // Optional: Sort by creation date in descending order
     .skip((pageNumber - 1) * limitNumber)
     .limit(limitNumber)
     .exec();
-    
-    if(!articles){
-      return res.status(404).json({message: "No article found!", articles});
-    }
-    return res.status(200).json({message: "Searched Successfully", articles});
-  } catch (error) {
-    return res.status(400).json({message: error.message});
+
+  const totalCount = await Article.countDocuments(searchQuery);
+
+  if (!articles?.length > 0) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          articles,
+          totalCount,
+          limitNumber,
+          pageNumber,
+        },
+        "Articles Searched Successfully"
+      )
+    );
   }
-}
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        articles,
+        totalCount,
+        limitNumber,
+        pageNumber,
+      },
+      "Articles Searched Successfully"
+    )
+  );
+});
+
+const getUniqueCategoryNews = async (req, res) => {
+  try {
+    const categoryNews = await Article.aggregate([
+      {$match: {status: "accepted"}},
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$category",
+          latestNews: { $first: "$$ROOT" },
+        },
+      },
+      { $replaceRoot: { newRoot: "$latestNews" } },
+    ]).limit(4);
+
+    return res.status(200).json({
+      success: true,
+      message: "Unique category news fetched successfully",
+      data: categoryNews,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch unique category news",
+      error: error.message,
+    });
+  }
+};
 
 export {
   createArticle,
@@ -286,6 +358,8 @@ export {
   getArticleById,
   updateArticleById,
   deleteArticleById,
-  getArticlesByReporterId,getArticleByCategory,
-  searchArticles
+  getArticlesByReporterId,
+  getArticleByCategory,
+  searchArticles,
+  getUniqueCategoryNews
 };

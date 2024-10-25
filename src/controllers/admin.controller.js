@@ -9,9 +9,14 @@ import {
   encryptPassword,
   comparePassword,
 } from "../config/libraries/bcrypt.js";
+import { asyncHandler } from "../config/utility/asyncHandler.js";
+import { ApiError } from "../config/utility/ApiError.js";
+import { ApiResponse } from "../config/utility/ApiResponse.js";
 
 // Get all users with pagination
 const getAllUsers = async (req, res) => {
+  console.log("came");
+  
   try {
     const { page = 1, limit = 10 } = req.query;
 
@@ -27,14 +32,14 @@ const getAllUsers = async (req, res) => {
     }
 
     // Fetch users
-    const users = await User.find()
+    const users = await User.find({role: "user"})
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber)
       .exec();
 
     // Fetch total count for pagination info
-    const totalCount = await User.countDocuments();
-
+    const totalCount = await User.countDocuments({role: "user"});
+    console.log("came", pageNumber);
     return res.status(200).json({
       totalCount,
       page: pageNumber,
@@ -50,6 +55,7 @@ const getAllUsers = async (req, res) => {
 
 // Get all reporters with pagination
 const getAllReporters = async (req, res) => {
+  
   try {
     const { page = 1, limit = 10 } = req.query;
 
@@ -72,7 +78,8 @@ const getAllReporters = async (req, res) => {
 
     // Fetch total count for pagination info
     const totalCount = await User.countDocuments({ role: "reporter" });
-
+    console.log("page", pageNumber, totalCount, limitNumber);
+    
     return res.status(200).json({
       totalCount,
       page: pageNumber,
@@ -272,52 +279,175 @@ console.log("check",environmentConfig.FRONTEND_URL)
   }
 };
 
-const acceptInviteForReporter = async (req, res) => {
-  try {
-    const { token } = req.params;
 
-    // Verify the token and extract email
-    const { email } = jwtVerify(token, "access");
-
-    // Generate random password
-    const randomPassword = generatePassword(8);
-
-    // Encrypt the password in parallel with saving user
-    const encryptedPassword = await encryptPassword(randomPassword);
-
-    // Create new user object
-    const user = new User({
-      name: email.split("@")[0], // Set name to the part of the email before '@'
-      email: email.toLowerCase(), // Ensure the email is lowercase
-      password: encryptedPassword, // Save the encrypted password
-      role: "reporter",
-    });
-
-    // Save user and prepare the email sending in parallel to optimize performance
-    await Promise.all([
-      user.save(),
-      sendEmail(
-        email,
-        "Thank you for confirming your reporter account",
-        `<div>Your temporary password: <strong>${randomPassword}</strong></div><div>Please log in using <a href="${environmentConfig.FRONTEND_URL}/login">this link</a>.</div>`
-      ),
-    ]);
-
-    // Respond with success message
-    return res.status(200).json({
-      message:
-        "Account created successfully. Please check your email for login details.",
-    });
-  } catch (error) {
-    console.error("Error accepting reporter invite:", error);
-
-    // Respond with a generic error message
-    return res.status(500).json({
-      message:
-        "An error occurred while accepting the invite. Please try again later.",
-    });
+const totalUsersPerMonth = asyncHandler(async(req, res)=>{
+  const user = req.user;
+  if(user?.role != "admin"){
+    throw new ApiError(401, "You are not authorized to access users per month details")
   }
-};
+  const output = await User.aggregate([
+    {
+      $match: {
+        role : "user"
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: {$year: "$createdAt"},
+          month: {$month: "$createdAt"},
+        },
+        registrationsInCurrentMonth: {
+          $sum: 1,
+        }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id.year",
+        userRegistrationsPerMonth: {
+          $push:  {
+            month: "$_id.month",
+            registrations: "$registrationsInCurrentMonth",
+          }
+        },
+        totalRegistrationsInYear: {
+          $sum : "$registrationsInCurrentMonth"
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        year : "$_id",
+        userRegistrationsPerMonth : 1,
+        totalRegistrationsInYear : 1
+      }
+    }
+  ])
+  
+  return res.status(200).json(new ApiResponse(200, output, "Fetched users per month successfully"))
+
+})
+
+const totalArticlesPerMonth = asyncHandler(async(req, res)=> {
+  const user = req.user;
+  const role = user?.role;
+  if(!role || role == "user"){
+    console.log("role", role);
+    
+    throw new ApiError(401, "You are not authorized to access users per month details")
+  }
+  const output = await Article.aggregate([
+    {
+      $match: (role === "reporter") ? {reporterId : user?._id} : {},
+    },
+    {
+      $group: {
+        _id: {
+          year: {$year: "$createdAt"},
+          month: {$month: "$createdAt"},
+        },
+        totalAriclesInAMonth: {
+          $sum: 1,
+        },
+        acceptedArticlesInAMonth: {
+            $sum: {
+              $cond: [{$eq : ["$status", "accepted"]}, 1, 0]
+          }
+        },
+        rejectedArticlesInAMonth: {
+          $sum: {
+            $cond: [{$eq: ["$status", "rejected"]}, 1, 0]
+          }
+        },
+        draftArticlesInAMonth: {
+          $sum: {
+            $cond: [{$eq: ["$status", "draft"]}, 1, 0]
+          }
+        }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id.year",
+        months: {
+          $push: {
+            month: "$_id.month",
+            totalAriticlesInAMonth: "$totalAriclesInAMonth",
+            acceptedArticles: "$acceptedArticlesInAMonth",
+            rejectedArticles: "$rejectedArticlesInAMonth",
+            draftArticles: "$draftArticlesInAMonth",
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id",
+        months: 1
+      }
+    }
+  ]);
+  
+  return res.status(200).json(new ApiResponse(200, output, "Articles per month of all years fetched successfully"))
+})
+
+const searchUsers = asyncHandler(async (req, res)=>{
+  const {page=1, limit=10, query, userType} = req.query;
+  const user = req.user;
+
+  if(user.role !== "admin"){
+    throw new ApiError(404, "You are not allowed to access this information");
+  }
+
+  if(!query || query?.trim() === ""){
+    throw new ApiError(401, "Searched query for user is empty");
+  }
+
+  const pageNo = parseInt(page, 10);
+  const limitNo = parseInt(limit, 10);
+
+  if(limitNo < 1 || pageNo < 1){
+    throw new ApiError(402, `Page and limit should be greater than one`)
+  }
+
+  const searchQuery = {
+    $or: [
+      { name: { $regex: query, $options: "i" } }, // case-insensitive regex search
+      { email: { $regex: query, $options: "i" } },
+      { mobile: { $regex: query, $options: "i" } },
+      { status: { $regex: query, $options: "i" } },
+      { role: { $regex: query, $options: "i" } },
+    ],
+  };
+
+  if(userType?.trim()?.toLowerCase() === "user"){
+    searchQuery.role = "user";
+  } else if (userType?.trim()?.toLowerCase() === "reporter"){
+    searchQuery.role = "reporter"
+  } else {
+    throw new ApiError(404, "Please enter valid user type i.e user or reporter")
+  }
+
+  const result = await 
+  User
+  .find(searchQuery)
+  .select("-password -role")
+  .skip((pageNo - 1)*limitNo)
+  .limit(limitNo)
+  .sort({createdAt: -1});
+  ;
+
+  const totalCount = await User.countDocuments(searchQuery);
+
+  return res.status(200).json(
+  new ApiResponse(200, {
+    [`${userType}s`]: result, page:pageNo, limit: limitNo, totalCount
+  }, "Users Fetched successfully"))
+  
+})
 
 export {
   getAllUsers,
@@ -327,5 +457,7 @@ export {
   updateArticleVerification,
   updateArticleStatus,
   inviteReporter,
-  acceptInviteForReporter,
+  totalUsersPerMonth,
+  totalArticlesPerMonth,
+  searchUsers
 };

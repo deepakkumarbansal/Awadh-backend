@@ -7,7 +7,8 @@ import {
   updateArticleById,
   deleteArticleById,
   getArticlesByReporterId,getArticleByCategory,
-  searchArticles
+  searchArticles,
+  getUniqueCategoryNews
 } from "../controllers/article.controller.js";
 
 articleRoutes.post("/create", createArticle);
@@ -17,6 +18,7 @@ articleRoutes.patch("/update-article/:articleId", updateArticleById);
 articleRoutes.delete("/delete-article/:articleId", deleteArticleById);
 articleRoutes.get("/reporter-articels/:reporterId", getArticlesByReporterId); // Paginated
 articleRoutes.get("/article-category",getArticleByCategory) //paginated
-articleRoutes.get('/search-article', searchArticles)
+articleRoutes.post('/search-articles', searchArticles) //paginated
+articleRoutes.get('/get-unique-articles-from-categories', getUniqueCategoryNews);
 
 export default articleRoutes;

@@ -21,7 +21,7 @@ const createComment = async (req, res) => {
     }
 
     // Check if the article is verified
-    if (!article.verified) {
+    if (!article.status === "accepted") {
       return res
         .status(403)
         .json({ message: "Cannot comment on unverified articles" });
@@ -32,16 +32,28 @@ const createComment = async (req, res) => {
       articleId,
       userId,
       comment,
-    });
-
+    })
     await newComment.save();
 
-    // article.comments.push(newComment._id);
-    // await article.save();
+    const populatedComment = await newComment
+      .populate({
+        path: "userId",
+        select: "name avatarUrl",
+        model: "User",
+      });
 
+    // Construct the response with user details
+    const responseComment = {
+      _id: populatedComment._id,
+      comment: populatedComment.comment,
+      commentedDate: populatedComment.createdAt.toLocaleString(),
+      userName: populatedComment.userId.name, // The user's name
+      avatarUrl: populatedComment.userId.avatarUrl, // The user's avatar URL
+    };
+    
     return res.status(201).json({
       message: "Comment created successfully",
-      comment: newComment,
+      comment: responseComment,
     });
   } catch (error) {
     console.error("Error creating comment:", error); // Improved error logging
@@ -81,7 +93,7 @@ const getCommentsByArticle = async (req, res) => {
       .limit(limitNumber)
       .populate({
         path: "userId",
-        select: "name", // Populate only the `name` field
+        select: "name avatarUrl", // Populate only the `name` field
         model: "User",
       })
       .exec();
@@ -92,6 +104,7 @@ const getCommentsByArticle = async (req, res) => {
       comment: comment.comment,
       commentedDate: comment.createdAt.toLocaleString(), // Format the date to a readable format
       userName: comment.userId ? comment.userId.name : "Anonymous", // Handle missing userName
+      avatarUrl: comment.userId ? comment.userId.avatarUrl : "",
     }));
 
     // Fetch total count for pagination info

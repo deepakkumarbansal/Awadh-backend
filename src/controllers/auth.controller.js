@@ -6,6 +6,9 @@ import {
   comparePassword,
 } from "../config/libraries/bcrypt.js";
 import { signJwt, jwtVerify } from "../config/libraries/jwt.js";
+import { generatePassword } from "../config/utility/createPassword.js";
+import { sendEmail } from "../config/libraries/nodemailer.js";
+import environmentConfig from "../config/env/environmentConfig.js";
 
 const register = async (req, res) => {
   try {
@@ -79,7 +82,7 @@ const login = async (req, res) => {
         "7d",
         "access"
       );
-      return res.status(200).json({
+      return res.status(200).header("authorization", token).json({
         message: "Login Successful",
         token,
         userId: user._id,
@@ -257,6 +260,56 @@ const updateAvatarUrl = async (req, res) => {
   }
 };
 
+const acceptInviteForReporter = async (req, res) => {
+  try {
+    const { token } = req.params;
+    console.log("token", token);
+    
+    // Verify the token and extract email
+    const { email } = jwtVerify(token, "access");
+    console.log("email", email);
+    
+    // Generate random password
+    const randomPassword = generatePassword(8);
+
+    // Encrypt the password in parallel with saving user
+    const encryptedPassword = await encryptPassword(randomPassword);
+    console.log("*************************HELLO**************");
+    
+    // Create new user object
+    const user = new User({
+      name: email.split("@")[0], // Set name to the part of the email before '@'
+      email: email.toLowerCase(), // Ensure the email is lowercase
+      password: encryptedPassword, // Save the encrypted password
+      role: "reporter",
+    });
+
+    // Save user and prepare the email sending in parallel to optimize performance
+    await Promise.all([
+      user.save(),
+      sendEmail(
+        email,
+        "Thank you for confirming your reporter account",
+        `<div>Your temporary password: <strong>${randomPassword}</strong></div><div>Please log in using <a href="${environmentConfig.FRONTEND_URL}/login">this link</a>.</div>`
+      ),
+    ]);
+
+    // Respond with success message
+    return res.status(200).json({
+      message:
+        "Account created successfully. Please check your email for login details.",
+    });
+  } catch (error) {
+    console.error("Error accepting reporter invite:", error);
+
+    // Respond with a generic error message
+    return res.status(500).json({
+      message:
+        "An error occurred while accepting the invite. Please try again later.",
+    });
+  }
+};
+
 export {
   register,
   login,
@@ -264,5 +317,6 @@ export {
   verifyEmailLinkAndUpdate,
   changePassword,
   changeName,
-  updateAvatarUrl
+  updateAvatarUrl,
+  acceptInviteForReporter
 };
