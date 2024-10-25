@@ -4,8 +4,8 @@ import { changeName, changePassword, forgetPassword, login, register, updateAvat
 
 authRoutes.post("/register", register);
 authRoutes.post("/login", login);
-authRoutes.post('/forget').post(forgetPassword);
-authRoutes.post('/verifypassword').post(verifyEmailLinkAndUpdate);
+authRoutes.post('/forget',forgetPassword);
+authRoutes.post('/verifypassword',verifyEmailLinkAndUpdate);
 authRoutes.post('/changePassword', changePassword);
 authRoutes.post('/changeName', changeName);
 authRoutes.post('/update-avatar-url', updateAvatarUrl);
